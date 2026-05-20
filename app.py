@@ -1,6 +1,8 @@
 import streamlit as st
 import requests
 import json
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 st.set_page_config(
     page_title="AI决策后果模拟器",
@@ -9,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# -------------------------- 只修改这里的3个值 --------------------------
+# -------------------------- 只需要修改这里的3个值 --------------------------
 API_KEY = "ark-178af4e5-fdfc-4fef-a9e0-2c00337634a1-46b10"
 ENDPOINT_ID = "ep-20260520162214-8f4dc"
 AD_SLOT_ID = ""
@@ -123,15 +125,26 @@ def generate_report(option1, option2, context):
             "max_tokens": 3000,
             "stream": False
         }
+
+        # 增加重试机制
+        session = requests.Session()
+        retry = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504]
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("https://", adapter)
         
-        response = requests.post(url, headers=headers, json=data, timeout=60)
+        # 超时时间从60秒改成120秒
+        response = session.post(url, headers=headers, json=data, timeout=120)
         response.raise_for_status()
         
         result = response.json()
         return result["choices"][0]["message"]["content"]
         
     except requests.exceptions.RequestException as e:
-        return f"❌ 生成失败：{str(e)}\n\n请检查你的API密钥和模型端点是否正确，或者稍后重试。"
+        return f"❌ 生成失败：{str(e)}\n\n请稍后重试，或检查网络连接。"
 
 if st.button("🚀 开始模拟决策", type="primary", use_container_width=True):
     if not option1 or not option2:
