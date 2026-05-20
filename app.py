@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import json
 
-# 页面配置（必须放在最前面）
 st.set_page_config(
     page_title="AI决策后果模拟器",
     page_icon="🤔",
@@ -10,21 +9,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# -------------------------- 只需要修改这里的3个值 --------------------------
-# 1. 替换成你在火山引擎拿到的API密钥（sk-xxxxxx）
+# -------------------------- 只修改这里的3个值 --------------------------
 API_KEY = "ark-178af4e5-fdfc-4fef-a9e0-2c00337634a1-46b10"
-# 2. 替换成你在火山引擎创建的豆包2.0 Lite模型端点（ep-xxxxxx）
 ENDPOINT_ID = "ep-20260520162214-8f4dc"
-# 3. 替换成你的穿山甲广告位ID（如果还没申请，先留空）
 AD_SLOT_ID = ""
 # -------------------------------------------------------------------------
 
-# 标题
 st.title("🤔 AI决策后果模拟器")
 st.subheader("不鸡汤，只讲真实得失与风险")
 st.markdown("---")
 
-# 输入区域
 col1, col2 = st.columns(2)
 with col1:
     option1 = st.text_input("选择A：", placeholder="例如：留在现在的公司")
@@ -37,7 +31,6 @@ context = st.text_area(
     height=100
 )
 
-# 核心提示词（替换成你自己打磨好的版本）
 PROMPT_TEMPLATE = """
 你是一个绝对中立的决策分析助手，永远不要替用户做任何决定。
 请严格按照以下结构，客观分析两个选择的所有可能后果，不要带有任何个人倾向。
@@ -105,7 +98,6 @@ PROMPT_TEMPLATE = """
 用户补充说明：{context}
 """
 
-# 生成报告函数（修复后的版本，没有属性错误）
 def generate_report(option1, option2, context):
     if not API_KEY or not ENDPOINT_ID:
         return "❌ 请先在代码顶部填写你的API密钥和模型端点"
@@ -132,7 +124,7 @@ def generate_report(option1, option2, context):
             "stream": False
         }
         
-        response = requests.post(url, headers=headers, data=json.dumps(data), timeout=60)
+        response = requests.post(url, headers=headers, json=data, timeout=60)
         response.raise_for_status()
         
         result = response.json()
@@ -141,7 +133,6 @@ def generate_report(option1, option2, context):
     except requests.exceptions.RequestException as e:
         return f"❌ 生成失败：{str(e)}\n\n请检查你的API密钥和模型端点是否正确，或者稍后重试。"
 
-# 生成按钮
 if st.button("🚀 开始模拟决策", type="primary", use_container_width=True):
     if not option1 or not option2:
         st.warning("⚠️ 请输入两个选择")
@@ -149,16 +140,13 @@ if st.button("🚀 开始模拟决策", type="primary", use_container_width=True
         with st.spinner("正在为你生成完整决策报告，请稍候..."):
             report = generate_report(option1, option2, context)
             
-            # 显示前30%内容作为预览
             preview_length = int(len(report) * 0.3)
             st.markdown(report[:preview_length] + "\n\n...")
             
             st.markdown("---")
             st.info("👇 观看30秒广告，解锁完整报告")
             
-            # 广告解锁按钮（如果还没申请广告位，先显示占位符）
             if AD_SLOT_ID:
-                # 这里会插入穿山甲广告代码
                 if st.button("📺 观看广告解锁完整报告", use_container_width=True):
                     st.markdown("---")
                     st.markdown(report)
@@ -167,7 +155,6 @@ if st.button("🚀 开始模拟决策", type="primary", use_container_width=True
                 st.markdown("---")
                 st.markdown(report)
 
-# 页脚
 st.markdown("---")
 col1, col2, col3 = st.columns(3)
 with col1:
