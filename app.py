@@ -128,7 +128,7 @@ def reset_all_state():
     st.session_state.show_pay_panel = False
 
 # 主生成按钮
-if st.button("🚀 生成决策报告", type="primary", use_container_width=True):
+if st.button("🚀 15秒生成决策报告", type="primary", use_container_width=True):
     if not option1 or not option2:
         st.warning("⚠️ 请输入两个选择")
     else:
