@@ -140,7 +140,7 @@ def generate_fast_report(option1, option2, context):
                 except json.JSONDecodeError:
                     continue
 
-# ==================== 核心：智能流式显示（只显示时间线，其他后台保存）====================
+# ==================== 修复后的核心函数：安全流式显示时间线 ====================
 def stream_only_timeline():
     """流式生成过程中，只实时显示A和B的时间线，其他内容后台收集不显示"""
     st.session_state.full_report = ""
@@ -155,17 +155,22 @@ def stream_only_timeline():
     for chunk in generate_fast_report(option1, option2, context):
         st.session_state.full_report += chunk
         
-        # 智能判断当前是否在时间线区域
-        if "## 时间线推演" in st.session_state.full_report and not a_timeline_done:
-            in_a_timeline = True
-        if "## 分维度得失" in st.session_state.full_report and in_a_timeline and not a_timeline_done:
-            in_a_timeline = False
-            a_timeline_done = True
-        if "# 选择B" in st.session_state.full_report and "## 时间线推演" in st.session_state.full_report.split("# 选择B")[1] and not b_timeline_done:
-            in_b_timeline = True
-        if "## 分维度得失" in st.session_state.full_report.split("# 选择B")[1] and in_b_timeline and not b_timeline_done:
-            in_b_timeline = False
-            b_timeline_done = True
+        # 安全判断：选择A的时间线区域
+        if not a_timeline_done:
+            if "## 时间线推演" in st.session_state.full_report and not in_a_timeline:
+                in_a_timeline = True
+            if "## 分维度得失" in st.session_state.full_report and in_a_timeline:
+                in_a_timeline = False
+                a_timeline_done = True
+        
+        # 安全判断：选择B的时间线区域（先检查是否存在"# 选择B"）
+        if not b_timeline_done and "# 选择B" in st.session_state.full_report:
+            b_part = st.session_state.full_report.split("# 选择B")[1]
+            if "## 时间线推演" in b_part and not in_b_timeline:
+                in_b_timeline = True
+            if "## 分维度得失" in b_part and in_b_timeline:
+                in_b_timeline = False
+                b_timeline_done = True
         
         # 只显示时间线部分
         if in_a_timeline or in_b_timeline:
@@ -176,7 +181,7 @@ def stream_only_timeline():
     final_preview = current_display + "\n\n---\n\n🔒 **得失分析、风险预警、后悔点提示** 已隐藏\n请解锁查看完整决策报告"
     display_placeholder.markdown(final_preview)
 
-# ==================== 主按钮逻辑（彻底修改，不再显示完整报告）====================
+# ==================== 主按钮逻辑 ====================
 if st.button("🚀 15秒生成决策报告", type="primary", use_container_width=True):
     if not option1 or not option2:
         st.warning("⚠️ 请输入两个选择")
@@ -264,7 +269,7 @@ if st.session_state.full_report and not st.session_state.is_generating:
         # 付费解锁面板
         if st.session_state.show_pay:
             st.markdown("---")
-            st.subheader("💰 微信扫码支付9.9元")
+            st.subheader("💰 微信扫码支付3.9元")
             
             if WECHAT_PAY_URL:
                 st.image(WECHAT_PAY_URL, width=300)
