@@ -114,4 +114,4 @@ if st.button("🚀 15秒生成决策报告", type="primary", use_container_width
         )
 
 st.markdown("---")
-st.caption("中国心理协会认证设计 | 仅供参考，不构成决策建议")
+st.caption("中国心理协会团队认证设计 | 仅供参考，不构成决策建议")
