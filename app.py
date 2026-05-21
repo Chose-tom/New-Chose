@@ -15,7 +15,7 @@ ENDPOINT_ID = "ep-20260520162214-8f4dc"
 AD_SLOT_ID = ""
 WECHAT_PAY_URL = ""  # 替换成你的微信收款码图片直链
 
-# ==================== 新增：会话状态（不影响原代码）====================
+# 会话状态
 if "full_report" not in st.session_state:
     st.session_state.full_report = ""
 if "is_unlocked" not in st.session_state:
@@ -24,6 +24,8 @@ if "show_ad" not in st.session_state:
     st.session_state.show_ad = False
 if "show_pay" not in st.session_state:
     st.session_state.show_pay = False
+if "is_generating" not in st.session_state:
+    st.session_state.is_generating = False
 
 st.title("🤔 AI决策后果模拟器")
 st.subheader("不鸡汤，只讲真实得失与风险")
@@ -98,7 +100,7 @@ PROMPT_TEMPLATE = """
 用户补充说明：{context}
 """
 
-# ==================== 原极速生成函数完全不变 ====================
+# 极速生成函数（完全不变）
 def generate_fast_report(option1, option2, context):
     url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
     headers = {
@@ -113,17 +115,15 @@ def generate_fast_report(option1, option2, context):
             option2=option2,
             context=context if context else "无"
         )}],
-        "temperature": 0.5,  # 降低温度，生成更快更稳定
-        "max_tokens": 1800,  # 刚好生成完整报告，不浪费时间
+        "temperature": 0.5,
+        "max_tokens": 1800,
         "top_p": 0.85,
-        "stream": True  # 开启流式输出，1秒出字
+        "stream": True
     }
     
-    # 国内网络稳定，单次请求即可，无需重试
     response = requests.post(url, headers=headers, json=data, timeout=60, stream=True)
     response.raise_for_status()
     
-    # 流式返回内容
     for line in response.iter_lines():
         if line:
             line = line.decode('utf-8')
@@ -140,69 +140,79 @@ def generate_fast_report(option1, option2, context):
                 except json.JSONDecodeError:
                     continue
 
-# ==================== 提取时间线预览（核心逻辑）====================
-def extract_timeline_preview(full_text):
-    """只提取A和B的时间线部分，其他全部隐藏"""
-    preview = ""
+# ==================== 核心：智能流式显示（只显示时间线，其他后台保存）====================
+def stream_only_timeline():
+    """流式生成过程中，只实时显示A和B的时间线，其他内容后台收集不显示"""
+    st.session_state.full_report = ""
+    current_display = ""
+    in_a_timeline = False
+    in_b_timeline = False
+    a_timeline_done = False
+    b_timeline_done = False
     
-    # 提取选择A的时间线
-    if "# 选择A" in full_text:
-        a_part = full_text.split("# 选择A")[1].split("# 选择B")[0]
-        if "## 时间线推演" in a_part and "## 分维度得失" in a_part:
-            a_timeline = a_part.split("## 时间线推演")[1].split("## 分维度得失")[0]
-            preview += "# 选择A\n## 时间线推演" + a_timeline + "\n\n"
+    display_placeholder = st.empty()
     
-    # 提取选择B的时间线
-    if "# 选择B" in full_text:
-        b_part = full_text.split("# 选择B")[1].split("# 最终中立提示")[0]
-        if "## 时间线推演" in b_part and "## 分维度得失" in b_part:
-            b_timeline = b_part.split("## 时间线推演")[1].split("## 分维度得失")[0]
-            preview += "# 选择B\n## 时间线推演" + b_timeline + "\n\n"
+    for chunk in generate_fast_report(option1, option2, context):
+        st.session_state.full_report += chunk
+        
+        # 智能判断当前是否在时间线区域
+        if "## 时间线推演" in st.session_state.full_report and not a_timeline_done:
+            in_a_timeline = True
+        if "## 分维度得失" in st.session_state.full_report and in_a_timeline and not a_timeline_done:
+            in_a_timeline = False
+            a_timeline_done = True
+        if "# 选择B" in st.session_state.full_report and "## 时间线推演" in st.session_state.full_report.split("# 选择B")[1] and not b_timeline_done:
+            in_b_timeline = True
+        if "## 分维度得失" in st.session_state.full_report.split("# 选择B")[1] and in_b_timeline and not b_timeline_done:
+            in_b_timeline = False
+            b_timeline_done = True
+        
+        # 只显示时间线部分
+        if in_a_timeline or in_b_timeline:
+            current_display += chunk
+            display_placeholder.markdown(current_display)
     
-    preview += "---\n\n🔒 **得失分析、风险预警、后悔点提示** 已隐藏\n请解锁查看完整决策报告"
-    return preview
+    # 生成完成后，添加解锁提示
+    final_preview = current_display + "\n\n---\n\n🔒 **得失分析、风险预警、后悔点提示** 已隐藏\n请解锁查看完整决策报告"
+    display_placeholder.markdown(final_preview)
 
-# ==================== 主按钮逻辑（原逻辑不变，只加保存）====================
+# ==================== 主按钮逻辑（彻底修改，不再显示完整报告）====================
 if st.button("🚀 15秒生成决策报告", type="primary", use_container_width=True):
     if not option1 or not option2:
         st.warning("⚠️ 请输入两个选择")
     else:
-        # 重置状态
+        # 重置所有状态
         st.session_state.full_report = ""
         st.session_state.is_unlocked = False
         st.session_state.show_ad = False
         st.session_state.show_pay = False
+        st.session_state.is_generating = True
         
         st.markdown("---")
-        st.subheader("📄 决策报告")
-        report_placeholder = st.empty()
-        full_report = ""
+        st.subheader("📄 决策报告（预览）")
         
-        # 原流式生成逻辑完全不变
-        for chunk in generate_fast_report(option1, option2, context):
-            full_report += chunk
-            report_placeholder.markdown(full_report)
+        # 只流式显示时间线，其他内容后台保存
+        stream_only_timeline()
         
-        # 保存完整报告到会话
-        st.session_state.full_report = full_report
+        st.session_state.is_generating = False
 
-# ==================== 显示逻辑（核心：未解锁只看时间线）====================
-if st.session_state.full_report:
+# ==================== 解锁逻辑 ====================
+if st.session_state.full_report and not st.session_state.is_generating:
     st.markdown("---")
     
     if st.session_state.is_unlocked:
-        # 已解锁：显示完整报告 + 双格式下载
+        # 解锁后才显示完整报告
         st.markdown(st.session_state.full_report)
         
         st.markdown("---")
         st.info("💡 提示：如果下载文件打不开，可以直接复制页面内容粘贴到Word/记事本保存")
         
-        # 原双格式下载按钮完全不变
+        # 双格式下载按钮
         download_col1, download_col2 = st.columns(2)
         with download_col1:
             st.download_button(
                 label="📥 下载TXT版（所有人都能打开）",
-                data=st.session_state.full_report.encode('utf-8'),  # 强制UTF-8编码，解决中文乱码
+                data=st.session_state.full_report.encode('utf-8'),
                 file_name="AI决策分析报告.txt",
                 mime="text/plain",
                 use_container_width=True
@@ -222,11 +232,6 @@ if st.session_state.full_report:
             st.rerun()
     
     else:
-        # 未解锁：只显示A和B的时间线，其他全部隐藏
-        preview = extract_timeline_preview(st.session_state.full_report)
-        st.markdown(preview)
-        st.markdown("---")
-        
         st.info("👇 选择以下任意一种方式解锁完整内容")
         
         # 双解锁按钮
