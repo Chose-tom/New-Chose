@@ -151,7 +151,7 @@ if st.button("🚀 15秒生成决策报告", type="primary", use_container_width
 st.markdown("---")
 footer_col1, footer_col2, footer_col3 = st.columns(3)
 with footer_col1:
-    st.caption("本工具由中国心理协会认证心理咨询师设计")
+    st.caption("本工具由中国心理协会认证心理咨询师团队设计")
 with footer_col2:
     st.caption("基于决策心理学原理开发")
 with footer_col3:
