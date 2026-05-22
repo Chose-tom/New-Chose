@@ -246,7 +246,7 @@ if st.session_state.full_report and not st.session_state.is_generating:
                 st.session_state.show_ad = True
                 st.session_state.show_pay = False
         with unlock_col2:
-            if st.button("💰 9.9元直接解锁（无需看广告）", type="primary", use_container_width=True):
+            if st.button("💰 3.9元直接解锁（无需看广告）", type="primary", use_container_width=True):
                 st.session_state.show_pay = True
                 st.session_state.show_ad = False
         
